@@ -1,0 +1,600 @@
+{
+  "name": "CrowdWisdom Lead Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-form",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        -544
+      ],
+      "id": "03302d42-6e57-40e4-8a2f-a67fff9c5721",
+      "name": "Webhook",
+      "webhookId": "7f2851cc-68b8-4a1a-8ade-abf510cee8cc",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.results.map(r => {\n  return {\n    json: {\n      lead_name: r.title,\n      profile_link: r.url,\n      description: r.content,\n      social_platform: $json.social_platform\n    }\n  }\n})\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -544
+      ],
+      "id": "028dbe27-bd2f-476d-97d7-5495e3c42e7f",
+      "name": "Extract Leads",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1136,
+        -544
+      ],
+      "id": "b952cd60-89e9-4652-931d-2a4e1f5b8257",
+      "name": "Process Each Lead",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an AI marketing agent working for CrowdWisdomTrading.com. Write short, professional, non-spammy outreach emails to trading influencers. Always return valid JSON in this format: {\\\"subject\\\":\\\"...\\\",\\\"email\\\":\\\"...\\\"}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Influencer Name: {{$json.influencer_name}}\\nProfile: {{$json.profile_link}}\\nDescription: {{$json.description}}\\n\\nWrite a short personalized outreach email asking for feedback about CrowdWisdomTrading.com.\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        -560
+      ],
+      "id": "cf9fe5e1-7ce2-441d-b93a-89c040fe5d29",
+      "name": "Generate AI Email",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const aiRaw = $json.choices[0].message.content;\n\n// Try to safely extract subject & email using regex\nconst subjectMatch = aiRaw.match(/\"subject\"\\s*:\\s*\"([^\"]+)\"/);\nconst emailMatch = aiRaw.match(/\"email\"\\s*:\\s*\"([^\"]+)\"/);\n\nreturn {\n  subject: subjectMatch ? subjectMatch[1] : \"No subject\",\n  email: emailMatch ? emailMatch[1] : aiRaw\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -560
+      ],
+      "id": "582b0e2d-94b3-47c8-ace9-503ba64f0f20",
+      "name": "Parse AI Output",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.clickup.com/api/v2/list/901613559385/task",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "pk_284413190_8IH6C3KC8YFZN3V5AM9PITSL2EICD4XO"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{$json.subject}}\n"
+            },
+            {
+              "name": "description",
+              "value": "=Profile: {{$json.link}}\n\nSnippet: {{$json.snippet}}\n\nEmail:\n{{$json.email}}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1984,
+        -560
+      ],
+      "id": "a2108ade-e78f-42ae-8f46-adee894eacbe",
+      "name": "Create ClickUp Task",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "30b5ee58-f9df-491c-8099-d88cc86b721e",
+              "name": "lead_type",
+              "value": "trading influencers",
+              "type": "string"
+            },
+            {
+              "id": "b0915928-12bd-4f35-9de2-2a953f189beb",
+              "name": "min_subscribers",
+              "value": 50000,
+              "type": "number"
+            },
+            {
+              "id": "b448c54e-2ff1-42ed-81ca-de51fa0cec43",
+              "name": "social_platform",
+              "value": "youtube",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "dotNotation": true
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        -544
+      ],
+      "id": "e29bfa2e-7b7f-4b56-b045-f91bcae2205c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "5WWP2vAOvtGRcSYB",
+          "mode": "list",
+          "cachedResultName": "lead_status_tracking",
+          "cachedResultUrl": "/projects/lRYKDmY5iSccdOHd/datatables/5WWP2vAOvtGRcSYB"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email_generated": true,
+            "task_created": true,
+            "lead_name": "={{$json.name || $json.lead_name}}\n",
+            "social_platform": "={{$item(0).$node[\"Edit Fields\"].json.social_platform}}\n\n",
+            "status": "=Task Created",
+            "created_at": "={{ new Date().toISOString() }}\n"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_name",
+              "displayName": "lead_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "social_platform",
+              "displayName": "social_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email_generated",
+              "displayName": "email_generated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_created",
+              "displayName": "task_created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2208,
+        -560
+      ],
+      "id": "d79071a9-2046-46ca-9501-1dc52673dc9d",
+      "name": "Log Lead Status"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "5WWP2vAOvtGRcSYB",
+          "mode": "list",
+          "cachedResultName": "lead_status_tracking",
+          "cachedResultUrl": "/projects/lRYKDmY5iSccdOHd/datatables/5WWP2vAOvtGRcSYB"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_name",
+              "keyValue": "={{$json.lead_name}}\n"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email_generated": true,
+            "task_created": true,
+            "status": "=Completed"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_name",
+              "displayName": "lead_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "social_platform",
+              "displayName": "social_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email_generated",
+              "displayName": "email_generated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_created",
+              "displayName": "task_created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2416,
+        -560
+      ],
+      "id": "325ca7f3-6e3c-4588-9cb8-d849781df252",
+      "name": "Update Lead Status"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nif (!staticData.leads) {\n  staticData.leads = [];\n}\n\nfor (const item of items) {\n  const alreadyExists = staticData.leads.find(\n    lead => lead.link === item.json.link\n  );\n\n  if (!alreadyExists) {\n    staticData.leads.push({\n      title: item.json.title,\n      link: item.json.link,\n      snippet: item.json.snippet,\n      subject: item.json.subject,\n      email: item.json.email,\n      stored_at: new Date().toISOString()\n    });\n  }\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        -560
+      ],
+      "id": "82bd5397-fb07-4c3a-8a24-c99ff8499dfb",
+      "name": "Save Lead To Status Table"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Key",
+              "value": "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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"api_key\": \"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\",\n  \"query\": \"{{$json.lead_type}} with more than {{$json.min_subscribers}} subscribers on {{$json.social_platform}}\",\n  \"search_depth\": \"basic\"\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        -544
+      ],
+      "id": "be45bb48-36d0-4a3d-ab64-672966af5b56",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c83be560-9fd3-4f5c-9ef5-5efa6fe79210",
+              "leftValue": "={{$json.social_platform.toLowerCase()}}",
+              "rightValue": "linkedin",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        -544
+      ],
+      "id": "9a4a2d41-6553-4e93-adeb-4be2e9c54279",
+      "name": "If",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Leads": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Lead": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Each Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Email": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Save Lead To Status Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ClickUp Task": {
+      "main": [
+        [
+          {
+            "node": "Log Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Lead To Status Table": {
+      "main": [
+        [
+          {
+            "node": "Create ClickUp Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Process Each Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Each Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4c92347d-19e1-4dcd-8ecc-b34a596b6c62",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8176e0f39ec91b5271db5d647f33d6200f6d7ada943ebabf0500fa8ff34c7671"
+  },
+  "id": "4o3O1o2xJ4fR8b82",
+  "tags": []
+}

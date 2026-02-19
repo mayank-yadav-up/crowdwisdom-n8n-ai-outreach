@@ -1,0 +1,559 @@
+{
+  "name": "demo 1",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "CrowdWisdomTrading Lead Finder",
+        "formDescription": "Search for trading influencers (50K+ followers) across social platforms.\n\n",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Lead Type",
+              "defaultValue": "=Trading Influencers\n",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Minimum Subscribers",
+              "fieldType": "number",
+              "fieldName": "min_subscribers",
+              "defaultValue": "50000",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Social Platform",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "YouTube"
+                  },
+                  {
+                    "option": "Instagram"
+                  },
+                  {
+                    "option": "TikTok"
+                  },
+                  {
+                    "option": "LinkedIn"
+                  },
+                  {
+                    "option": "Web"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aa33a5cd-8aa9-4bac-8732-208cbce28bfa",
+      "name": "Lead Search Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        256,
+        560
+      ],
+      "webhookId": "80c7a349-01fb-4166-857d-ee2bc4eb5932"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "751452f7-6f16-43ba-b016-973df28836a1",
+              "name": "search_query",
+              "value": "={{$json[\"Lead Type\"]}} with more than {{$json.min_subscribers}} subscribers on {{$json[\"Social Platform\"]}}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4c5137e7-3d96-41e6-bfb6-2f60c9928662",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ad9e6ad1-3718-4c27-b740-1549e8811c39",
+      "name": "Extract Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are writing a personalized outreach email on behalf of CrowdWisdomTrading.com.\n\nLead Details:\nName: {{$json.lead_name}}\nProfile: {{$json.profile_link}}\nPlatform: {{$json.social_platform}}\n\nInstructions:\n- Write a short personalized email\n- Subject line must include a hook about trading\n- Mention CrowdWisdomTrading.com\n- Ask them for feedback and collaboration\n- Keep it professional but friendly\n- Include a CTA asking for their thoughts\n\nReturn output in this JSON format only:\n\n{\n  \"subject\": \"...\",\n  \"email_body\": \"...\"\n}\n",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "338bcc4b-65f7-49ba-927e-f85dfc3fb57a",
+      "name": "Generate Outreach Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1376,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-3.5-turbo",
+        "options": {}
+      },
+      "id": "4b1e5b2f-d75c-444d-af8e-0813ad74ac99",
+      "name": "OpenRouter GPT Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        512
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "3Zos52yQ3GgfF38Q",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3f17f45-399e-43d7-9d6b-3ea54ced153d",
+              "name": "lead_name",
+              "value": "={{$json.lead_name || $json.title || $json.name}}",
+              "type": "string"
+            },
+            {
+              "id": "2d694edd-05c3-4719-b2e5-896e2ddaac80",
+              "name": "profile_link",
+              "value": "={{$json.profile_link || $json.link}}",
+              "type": "string"
+            },
+            {
+              "id": "0eb766de-bac6-4f32-a035-2b880811ab9f",
+              "name": "social_platform",
+              "value": "={{$node[\"Workflow Configuration\"].json.social_platform}}",
+              "type": "string"
+            },
+            {
+              "id": "36b902e5-733a-4205-942d-9d175091957c",
+              "name": "status",
+              "value": "Found",
+              "type": "string"
+            },
+            {
+              "id": "b249d3d4-0d6a-4555-a356-2554c49ac5f6",
+              "name": "email_generated",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "f9eaea98-a9f4-4efa-a579-1e65e80609ff",
+              "name": "task_created",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "47aa69eb-25f8-41f3-a564-01d6200afb56",
+              "name": "created_at",
+              "value": "={{$now}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d23f92b7-6c46-48ee-b389-f7ed36f8c0f5",
+      "name": "Prepare Lead Data for Storage",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "5WWP2vAOvtGRcSYB",
+          "mode": "list",
+          "cachedResultName": "lead_status_tracking",
+          "cachedResultUrl": "/projects/lRYKDmY5iSccdOHd/datatables/5WWP2vAOvtGRcSYB"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email_generated": true,
+            "task_created": true,
+            "lead_name": "={{$json.lead_name}}",
+            "social_platform": "={{$json.social_platform}}\n",
+            "status": "Found",
+            "created_at": "={{$now}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_name",
+              "displayName": "lead_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "social_platform",
+              "displayName": "social_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email_generated",
+              "displayName": "email_generated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_created",
+              "displayName": "task_created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9c57bd2f-ef81-4ae7-b394-4a2dc8fc3653",
+      "name": "Save Lead to Data Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1728,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "facb2c90-f506-4d48-ba73-bf987765a749",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            },
+            {
+              "id": "d8cf8966-777c-48ea-903c-ef38ed6c4872",
+              "name": "email_generated",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "96cbb212-104a-487e-87fe-a9d38e80044e",
+              "name": "task_created",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "7eb18167-7465-4694-a848-30d476f1af9d",
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1b2e68ef-ba38-451b-ab2a-a57eccee00d8",
+      "name": "Prepare Status Update",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1808,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "5WWP2vAOvtGRcSYB",
+          "mode": "list",
+          "cachedResultName": "lead_status_tracking",
+          "cachedResultUrl": "/projects/lRYKDmY5iSccdOHd/datatables/5WWP2vAOvtGRcSYB"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_name",
+              "keyValue": "={{$json.lead_name}}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email_generated": true,
+            "task_created": true,
+            "status": "\"completed\""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_name",
+              "displayName": "lead_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "social_platform",
+              "displayName": "social_platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email_generated",
+              "displayName": "email_generated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "task_created",
+              "displayName": "task_created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a0e8f63c-1cc0-46fd-81e1-ad2d14a2e2af",
+      "name": "Update Status to Completed",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2176,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mkymayank.app.n8n.cloud/webhook/lead-form",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"lead_type\": \"={{$json.lead_type}}\",\n  \"min_subscribers\": \"={{$json.min_subscribers}}\",\n  \"social_platform\": \"={{$json.social_platform}}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        688,
+        560
+      ],
+      "id": "23d9a043-a806-4af0-aa96-d92a0c3e584a",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Lead Search Form": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Outreach Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Lead Data for Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter GPT Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Outreach Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Outreach Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Status Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Lead Data for Storage": {
+      "main": [
+        [
+          {
+            "node": "Save Lead to Data Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Status Update": {
+      "main": [
+        [
+          {
+            "node": "Update Status to Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "af138f4c-de5d-449a-85ba-783f9016a442",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8176e0f39ec91b5271db5d647f33d6200f6d7ada943ebabf0500fa8ff34c7671"
+  },
+  "id": "gI1xrvTyQ6jcLLUI",
+  "tags": []
+}
